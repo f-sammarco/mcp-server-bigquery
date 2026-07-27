@@ -22,6 +22,10 @@ ADD src /app/src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
+# Add the stdio -> streamable-http bridge into the same venv
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /app/.venv/bin/python mcp-proxy
+
 FROM python:3.13-slim-bookworm
 
 # Set working directory
@@ -33,8 +37,12 @@ COPY --from=uv /app/.venv /app/.venv
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Define the entry point
-ENTRYPOINT ["mcp-server-bigquery"]
+EXPOSE 8000
+
+# The upstream server speaks stdio only. mcp-proxy fronts it with a
+# streamable-http endpoint on :8000/mcp so it can run as a long-lived service.
+# Anything appended to `docker run <image> ...` is forwarded to mcp-server-bigquery.
+ENTRYPOINT ["mcp-proxy", "--host", "0.0.0.0", "--port", "8000", "--stateless", "--pass-environment", "--", "mcp-server-bigquery"]
 
 # Example command
 # CMD ["--project", "your-gcp-project-id", "--location", "your-gcp-location"]
