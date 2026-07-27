@@ -9,7 +9,6 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 
 # Copy pyproject.toml and lock file for dependencies
-COPY pyproject.toml uv.lock ./
 COPY pyproject.toml uv.lock README.md ./
 
 # Install the project's dependencies
@@ -29,8 +28,7 @@ FROM python:3.13-slim-bookworm
 WORKDIR /app
 
 # Copy virtual environment from the builder
-COPY --from=uv /root/.local /root/.local
-COPY --from=uv --chown=app:app /app/.venv /app/.venv
+COPY --from=uv /app/.venv /app/.venv
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
