@@ -10,6 +10,7 @@ ENV UV_COMPILE_BYTECODE=1
 
 # Copy pyproject.toml and lock file for dependencies
 COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Install the project's dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
