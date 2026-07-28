@@ -22,9 +22,10 @@ ADD src /app/src
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
-# Add the stdio -> streamable-http bridge into the same venv
+# Add the stdio -> streamable-http bridge into the same venv. Pinned because
+# proxy_entrypoint.py wraps the ASGI app mcp-proxy hands to uvicorn.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /app/.venv/bin/python mcp-proxy
+    uv pip install --python /app/.venv/bin/python 'mcp-proxy==0.12.0'
 
 FROM python:3.13-slim-bookworm
 
@@ -41,8 +42,10 @@ EXPOSE 8000
 
 # The upstream server speaks stdio only. mcp-proxy fronts it with a
 # streamable-http endpoint on :8000/mcp so it can run as a long-lived service.
+# proxy_entrypoint runs that same proxy CLI and adds GET /healthz, which
+# container orchestrators probe by default (mcp-proxy alone serves /status).
 # Anything appended to `docker run <image> ...` is forwarded to mcp-server-bigquery.
-ENTRYPOINT ["mcp-proxy", "--host", "0.0.0.0", "--port", "8000", "--stateless", "--pass-environment", "--", "mcp-server-bigquery"]
+ENTRYPOINT ["python", "-m", "mcp_server_bigquery.proxy_entrypoint", "--host", "0.0.0.0", "--port", "8000", "--stateless", "--pass-environment", "--", "mcp-server-bigquery"]
 
 # Example command
 # CMD ["--project", "your-gcp-project-id", "--location", "your-gcp-location"]

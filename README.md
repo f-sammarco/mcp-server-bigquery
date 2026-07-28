@@ -82,3 +82,30 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
   }
 }
 ```
+
+## Container image
+
+The server itself speaks stdio, so the image fronts it with
+[mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) and listens on port 8000:
+
+| Path | Purpose |
+| --- | --- |
+| `/mcp` | streamable-http MCP endpoint |
+| `/sse`, `/messages/` | SSE MCP endpoint |
+| `/healthz` | health check added by `mcp_server_bigquery.proxy_entrypoint` (also `/health`, `/livez`, `/readyz`) |
+| `/status` | mcp-proxy activity report |
+
+`/healthz` exists because container orchestrators probe it by default; plain
+mcp-proxy answers 404 there, which fails readiness and liveness probes and
+restarts the container in a loop.
+
+```bash
+docker build -t mcp-server-bigquery .
+docker run -p 8000:8000 \
+  -e BIGQUERY_PROJECT={{GCP_PROJECT_ID}} \
+  -e BIGQUERY_LOCATION={{GCP_LOCATION}} \
+  mcp-server-bigquery
+```
+
+Arguments appended to `docker run <image> ...` are forwarded to the server, so
+`--project`/`--location`/`--dataset` work in place of the environment variables.
